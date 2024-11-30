@@ -20,6 +20,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/kaz/pprotein/integration/standalone"
 )
 
 const (
@@ -35,6 +37,8 @@ type handlers struct {
 }
 
 func main() {
+	go standalone.Integrate(":8888")
+
 	e := echo.New()
 	e.Debug = GetEnv("DEBUG", "") == "true"
 	e.Server.Addr = fmt.Sprintf(":%v", GetEnv("PORT", "7000"))
@@ -120,6 +124,12 @@ func (h *handlers) Initialize(c echo.Context) error {
 		c.Logger().Error(err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
+
+	go func() {
+		if _, err := http.Get("http://pprotein.maca.jp:9000/api/group/collect"); err != nil {
+			c.Logger().Printf("failed to communicate with pprotein: %v", err)
+		}
+	}()
 
 	res := InitializeResponse{
 		Language: "go",
